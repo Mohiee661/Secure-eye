@@ -1,0 +1,12 @@
+opencv-python
+numpy
+Flask
+Flask-SocketIO
+SpeechRecognition
+PyAudio
+pytesseract
+Pillow
+pocketsphinx
+fastapi
+uvicorn
+ultralytics
