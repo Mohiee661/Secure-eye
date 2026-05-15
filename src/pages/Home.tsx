@@ -1,95 +1,154 @@
-import type { CSSProperties } from 'react';
-import { ArrowRight, Shield, Flame, UserRound, Cpu } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import './home.css';
 
-function DemoCard({
-  title,
-  description,
-  href,
-  accent,
-  Icon,
-  bullets,
-}: {
-  title: string;
-  description: string;
-  href: string;
-  accent: string;
-  Icon: typeof Shield;
-  bullets: string[];
-}) {
-  return (
-    <a className="home-demo-card" href={href} style={{ '--home-accent': accent } as CSSProperties}>
-      <div className="home-demo-top">
-        <div className="home-demo-icon">
-          <Icon size={18} />
-        </div>
-        <ArrowRight size={16} className="home-demo-arrow" />
-      </div>
-      <div className="home-demo-title">{title}</div>
-      <p className="home-demo-description">{description}</p>
-      <ul className="home-demo-bullets">
-        {bullets.map((bullet) => (
-          <li key={bullet}>{bullet}</li>
-        ))}
-      </ul>
-    </a>
-  );
+function useUtcClock() {
+  const [ts, setTs] = useState('');
+  useEffect(() => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    function tick() {
+      const d = new Date();
+      setTs(
+        `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ` +
+        `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} UTC`
+      );
+    }
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return ts;
 }
 
 export default function Home() {
+  const ts = useUtcClock();
+
   return (
-    <div className="home-shell">
-      <section className="home-hero panel">
-        <div className="home-kicker">Unified Intelligence Platform</div>
-        <h1>Two isolated demos, one launch screen.</h1>
-        <p className="home-copy">
-          This project demonstrates two separate real-time systems: tamper resistance for live camera monitoring and
-          crisis response for fire/fall detection. Pick a demo below to open the dashboard you want.
+    <>
+      {/* NAV */}
+      <header className="h-nav">
+        <div className="h-brand" aria-label="AV26-001">
+          <div className="h-brand-mark" aria-hidden="true" />
+          <span className="h-brand-label">AV26-001</span>
+        </div>
+        <div className="h-nav-status" aria-live="polite">
+          <span className="h-pulse" aria-hidden="true">
+            <span className="h-pulse-core" />
+            <span className="h-pulse-ring" />
+          </span>
+          <span>SYSTEMS ONLINE</span>
+        </div>
+      </header>
+
+      {/* HERO */}
+      <section className="h-hero">
+        <div className="h-eyebrow">
+          <span className="h-eyebrow-tick" aria-hidden="true" />
+          <span>ENTRY POINT · OPERATIONS</span>
+        </div>
+        <h1 className="h-headline">
+          Two systems. <em>One operations deck.</em>
+        </h1>
+        <p className="h-subtext">
+          A unified entry point for tamper-resistance monitoring and crisis-response dispatch.
+          Pick a module to open its live console.
         </p>
-        <div className="home-metrics">
-          <div>
-            <span>01</span>
-            <strong>Tamper Resistance</strong>
+        <div className="h-hint">
+          <span>SELECT MODULE</span>
+          <span className="h-hint-arrow" aria-hidden="true">↓</span>
+        </div>
+      </section>
+
+      {/* SPLIT MODULES */}
+      <main className="h-split">
+        <a className="h-module h-module--tamper" href="/tamper.html" aria-label="Open Tamper Resistance dashboard">
+          <div className="h-module-head">
+            <div className="h-module-index">MODULE 01 / TAMPER</div>
+            <div className="h-module-meta">
+              STATUS<br /><b>● ACTIVE</b>
+            </div>
           </div>
-          <div>
-            <span>02</span>
-            <strong>Crisis Response</strong>
+          <h2 className="h-module-title">Tamper Resistance</h2>
+          <p className="h-module-desc">
+            Continuous integrity monitoring of capture feeds with cryptographic
+            watermark validation and forensic evidence handling.
+          </p>
+          <ul className="h-feature-list">
+            <li>Live monitoring <span>· feed integrity</span></li>
+            <li>Watermark validation <span>· cryptographic</span></li>
+            <li>Video evidence handling <span>· chain-of-custody</span></li>
+            <li>Glare + low-light support <span>· adaptive</span></li>
+          </ul>
+          <span className="h-cta">
+            Open Dashboard
+            <span className="h-cta-arrow" aria-hidden="true">→</span>
+          </span>
+        </a>
+
+        <a className="h-module h-module--crisis" href="/crisis.html" aria-label="Open Crisis Response dashboard">
+          <div className="h-module-head">
+            <div className="h-module-index">MODULE 02 / CRISIS</div>
+            <div className="h-module-meta">
+              STATUS<br /><b>● ARMED</b>
+            </div>
           </div>
-          <div>
-            <span>GPU</span>
-            <strong>CUDA Runtime</strong>
+          <h2 className="h-module-title">Crisis Response</h2>
+          <p className="h-module-desc">
+            Real-time fire and fall detection with automated emergency dispatch.
+            Single-glance situational awareness for first responders.
+          </p>
+          <ul className="h-feature-list">
+            <li>Fire detection <span>· best.pt</span></li>
+            <li>Fall detection <span>· yolov8n.pt</span></li>
+            <li>Ambulance &amp; fire dispatch <span>· auto-route</span></li>
+            <li>Live alert card <span>· broadcast</span></li>
+          </ul>
+          <span className="h-cta">
+            Open Dashboard
+            <span className="h-cta-arrow" aria-hidden="true">→</span>
+          </span>
+        </a>
+      </main>
+
+      {/* INFO STRIP */}
+      <section className="h-info-wrap" aria-label="System diagnostics">
+        <div className="h-info-label">SYSTEM DIAGNOSTICS</div>
+        <div className="h-info-strip">
+          <div className="h-cell">
+            <div className="h-cell-key">FRONTEND</div>
+            <div className="h-cell-val">:3000</div>
+            <div className="h-cell-status"><span className="h-cell-dot" />ONLINE</div>
+          </div>
+          <div className="h-cell">
+            <div className="h-cell-key">TAMPER BACKEND</div>
+            <div className="h-cell-val">:8001</div>
+            <div className="h-cell-status"><span className="h-cell-dot" />ONLINE</div>
+          </div>
+          <div className="h-cell">
+            <div className="h-cell-key">CRISIS BACKEND</div>
+            <div className="h-cell-val">:8002</div>
+            <div className="h-cell-status"><span className="h-cell-dot" />ONLINE</div>
+          </div>
+          <div className="h-cell">
+            <div className="h-cell-key">DEV SERVER</div>
+            <div className="h-cell-val">:5173</div>
+            <div className="h-cell-status"><span className="h-cell-dot" />ONLINE</div>
           </div>
         </div>
       </section>
 
-      <section className="home-grid">
-        <DemoCard
-          title="Tamper Resistance"
-          description="Live camera defense UI with blur, shake, liveness, glare, and repositioning checks."
-          href="/tamper.html"
-          accent="#4ade80"
-          Icon={Shield}
-          bullets={['Camera monitoring', 'Alert stream', 'Operator controls']}
-        />
-        <DemoCard
-          title="Crisis Response"
-          description="Fire and fall detection dashboard with a single alert, deployment state, and clip controls."
-          href="/crisis.html"
-          accent="#60a5fa"
-          Icon={Flame}
-          bullets={['Fire dispatch', 'Fall dispatch', 'Video selector']}
-        />
-      </section>
-
-      <section className="home-footer panel">
-        <div className="home-footer-item">
-          <Cpu size={16} />
-          <span>CUDA-backed inference when available</span>
+      {/* FOOTER */}
+      <footer className="h-footer">
+        <div className="h-footer-col">
+          <span>AV26-001</span>
+          <span className="h-footer-sep">/</span>
+          <span>DUAL DASHBOARD SECURITY PLATFORM</span>
         </div>
-        <div className="home-footer-item">
-          <UserRound size={16} />
-          <span>Separate runtime and UI for each demo</span>
+        <div className="h-footer-col h-footer-col--right">
+          <span>BUILD #1042</span>
+          <span className="h-footer-sep">/</span>
+          <span>{ts}</span>
         </div>
-      </section>
-    </div>
+      </footer>
+    </>
   );
 }

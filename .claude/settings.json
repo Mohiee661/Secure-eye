@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/anany/AppData/Local/Temp/design-extract/avinya-hackathon/chats/**)",
+      "Read(//c/Users/anany/AppData/Local/Temp/design-extract/avinya-hackathon/project/**)"
+    ]
+  }
+}
