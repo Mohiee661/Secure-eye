@@ -1,14 +1,7 @@
 node_modules/
-dist/
 .vite/
 .env
 *.local
 __pycache__/
 */__pycache__/
-data/
-storage/
 *.log
-videos/*
-!videos/.gitkeep
-models/*
-!models/.gitkeep
