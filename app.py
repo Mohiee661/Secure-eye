@@ -53,7 +53,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Configuration
 BLUR_THRESHOLD = 25.0
 SHAKE_THRESHOLD = 5.0
-REPOSITION_THRESHOLD = 7.0  # Threshold for directional shift magnitude - reduced false positives
+REPOSITION_THRESHOLD = 5.0  # Threshold for directional shift magnitude
 CAMERA_INDEX = 0
 BLUR_FIX_ENABLED = True
 BLUR_FIX_STRENGTH = 5
@@ -73,7 +73,7 @@ sensor_config = {
     'glare': True,          # Glare detection
     'liveness': True,       # Liveness detection
     'reposition': True,     # Reposition detection
-    'blur_fix': True,       # Blur correction
+    'blur_fix': False,      # Blur correction (off by default — apply only when needed)
     'glare_rescue': True,   # Glare rescue
     'audio_alerts': True,    # Audio alerts/logging
     'glare_rescue_mode': 'CLAHE' # <--- NEW: Add glare_rescue_mode here
@@ -301,7 +301,18 @@ def camera_thread():
         is_repositioned, shift_magnitude, shift_x, shift_y = tamper_detector.detect_camera_reposition(
             gray, prev_gray, threshold_shift=REPOSITION_THRESHOLD
         )
-        
+
+        # Fallback for fast movements: optical flow fails when displacement > ~1/8 frame width.
+        # Raw pixel difference catches the scene-change regardless of movement speed.
+        # Guard: skip if mean brightness < 20 (blackout event, not a reposition).
+        if not is_repositioned:
+            frame_mad = float(np.mean(np.abs(gray.astype(np.float32) - prev_gray.astype(np.float32))))
+            mean_brightness_now = float(np.mean(gray))
+            if frame_mad > 45.0 and mean_brightness_now > 20.0:
+                is_repositioned = True
+                shift_magnitude = frame_mad * 0.4
+                shift_x, shift_y = 0.0, 0.0
+
         # <--- FIX 3: Replace old glare check with the robust one ---
         # is_glare, glare_percentage, glare_histogram = tamper_detector.check_glare(frame, threshold_pct=10.0) # <--- DELETED
         
@@ -577,28 +588,33 @@ def gen_frames():
     Generator function that yields frames as MJPEG encoded frames.
     """
     global current_frame, frame_lock
-    
+
     while True:
         if current_frame is None:
+            time.sleep(0.033)
             continue
-        
+
         with frame_lock:
             if current_frame is None:
+                time.sleep(0.033)
                 continue
             frame = current_frame.copy()
-        
+
         # Encode frame as JPEG
-        ret, buffer = cv2.imencode('.jpg', frame)
+        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         if not ret:
+            time.sleep(0.033)
             continue
-        
+
         frame_bytes = buffer.tobytes()
-        
+
         # Yield frame in MJPEG format
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n'
                b'Content-Length: ' + str(len(frame_bytes)).encode() + b'\r\n\r\n'
                + frame_bytes + b'\r\n')
+
+        time.sleep(0.033)  # cap at ~30 fps, stops busy-loop hammering frame_lock
 
 # ============================================================================
 # FLASK ROUTES

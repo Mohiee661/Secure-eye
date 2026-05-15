@@ -43,6 +43,12 @@ export default defineConfig({
         timeout: 0,
         rewrite: (path) => path.replace(/^\/crisis/, ''),
       },
+      '/crisis/frame': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        timeout: 0,
+        rewrite: (path) => path.replace(/^\/crisis/, ''),
+      },
       '/video_feed':      { target: 'http://localhost:5000', changeOrigin: true, timeout: 0 },
       '/processed_feed':  { target: 'http://localhost:5000', changeOrigin: true, timeout: 0 },
       '/video_frame':     { target: 'http://localhost:5000', changeOrigin: true },

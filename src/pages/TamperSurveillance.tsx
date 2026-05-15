@@ -176,29 +176,10 @@ export default function TamperSurveillance() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="tamper-header panel">
         <div className="tamper-header-left">
-          <Shield size={18} color="#00e676" />
+          <Shield size={18} color="var(--green)" />
           <span className="tamper-title">ACTIVE DEFENSE SYSTEM</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => { window.location.href = '/crisis.html'; }}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 10,
-              border: '1px solid rgba(0, 230, 118, 0.28)',
-              background: 'rgba(0, 230, 118, 0.08)',
-              color: 'var(--text)',
-              fontFamily: 'inherit',
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-            }}
-          >
-            Open Crisis
-          </button>
           {!connected && (
             <div className="conn-banner">
               <WifiOff size={12} />
@@ -263,24 +244,13 @@ export default function TamperSurveillance() {
             </div>
           </div>
           {/* Glare mode toggle */}
-          <div style={{ display: 'flex', gap: 6, padding: '8px 14px', borderTop: '1px solid rgba(70,58,65,0.4)' }}>
+          <div className="enhance-row">
             <span className="mono-label" style={{ marginRight: 4 }}>ENHANCE MODE</span>
             {(['CLAHE', 'MSR'] as const).map(m => (
               <button
                 key={m}
                 onClick={() => switchGlareMode(m)}
-                style={{
-                  padding: '3px 10px',
-                  borderRadius: 6,
-                  border: 'none',
-                  background: glareMode === m ? 'linear-gradient(135deg,var(--primary),var(--accent))' : 'var(--border)',
-                  color: glareMode === m ? '#fff' : 'var(--text-muted)',
-                  fontFamily: 'Ubuntu Mono, monospace',
-                  fontSize: 9,
-                  letterSpacing: '0.15em',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
+                className={`enhance-btn ${glareMode === m ? 'active' : ''}`}
               >
                 {m}
               </button>
