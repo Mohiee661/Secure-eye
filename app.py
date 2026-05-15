@@ -53,7 +53,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Configuration
 BLUR_THRESHOLD = 25.0
 SHAKE_THRESHOLD = 5.0
-REPOSITION_THRESHOLD = 5.0  # Threshold for directional shift magnitude
+REPOSITION_THRESHOLD = 6.5  # Threshold for directional shift magnitude
 CAMERA_INDEX = 0
 BLUR_FIX_ENABLED = True
 BLUR_FIX_STRENGTH = 5
@@ -308,7 +308,7 @@ def camera_thread():
         if not is_repositioned:
             frame_mad = float(np.mean(np.abs(gray.astype(np.float32) - prev_gray.astype(np.float32))))
             mean_brightness_now = float(np.mean(gray))
-            if frame_mad > 45.0 and mean_brightness_now > 20.0:
+            if frame_mad > 70.0 and mean_brightness_now > 20.0:
                 is_repositioned = True
                 shift_magnitude = frame_mad * 0.4
                 shift_x, shift_y = 0.0, 0.0
@@ -413,8 +413,8 @@ def camera_thread():
                 reposition_alert_active = False
         else:
             reposition_alert_frames += 1
-            if reposition_alert_frames > 30:  # Clear alert after 30 frames without detection
-                reposition_alert_shown = False  # Reset flag when motion fully stops
+            if reposition_alert_frames > 150:  # ~5s at 30fps before popup can fire again
+                reposition_alert_shown = False
             reposition_alert_active = False
         
         # <--- FIX 4: Populate detection_data with the NEW glare stats ---
@@ -497,53 +497,40 @@ def camera_thread():
                 print(f"Error emitting detection data: {e}")
         
         # --- GLARE RESCUE (Applied FIRST, before blur fixing) ---
-        frame_for_processing = frame.copy()  # Start with original frame
-        
-        # <--- FIX 5: Replaced rescue block with your tuned CLAHE pipeline ---
-        if is_glare and sensor_enabled['glare_rescue'] and clahe is not None:
-            try:
-                with sensor_config_lock:
-                    current_mode = sensor_config.get('glare_rescue_mode', 'CLAHE')
-                print(f"[GLARE] Applying glare rescue (mode: {current_mode})...")
+        frame_for_processing = frame.copy()
 
+        if is_glare and sensor_enabled['glare_rescue'] and clahe is not None:
+            with sensor_config_lock:
+                current_mode = sensor_config.get('glare_rescue_mode', 'CLAHE')
+
+            # Apply filter — isolated try so a failure never resets frame_for_processing
+            try:
                 if current_mode == 'CLAHE':
-                    # CLAHE on L channel in LAB space
                     lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
                     l, a, b = cv2.split(lab)
                     l_clahe = clahe.apply(l)
-                    # Gamma boost to lift dark areas (gamma < 1 = brighter)
                     l_gamma = np.power(l_clahe / 255.0, 0.65) * 255.0
                     l_final = np.clip(l_gamma, 0, 255).astype(np.uint8)
                     merged = cv2.merge((l_final, a, b))
                     clahe_frame = cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)
-                    # Sharpening pass
                     clahe_frame = apply_unsharp_mask(clahe_frame, amount=1.2)
-                    # Tame highlights aggressively — anything > 220 is blown out
                     gray_raw = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     _, mask = cv2.threshold(gray_raw, 220, 255, cv2.THRESH_BINARY)
                     clahe_frame[mask > 0] = (120, 120, 120)
                     frame_for_processing = clahe_frame
-                    print(f"[GLARE] CLAHE + gamma + tame applied.")
-
                 elif current_mode == 'MSR':
-                    # Multi-Scale Retinex — dramatic illumination normalization
                     msr_frame = apply_msr(frame, sigmas=(15, 80, 250))
-                    # Light sharpening pass to restore edge crispness
                     msr_frame = apply_unsharp_mask(msr_frame, amount=0.6)
                     frame_for_processing = msr_frame
-                    print(f"[GLARE] MSR applied.")
-                
-                # Save glare image to storage and database
-                try:
-                    file_path = save_glare_image(frame_for_processing, dark_pct, current_time) # Use dark_pct
-                    aegis_db.add_glare_image(file_path, dark_pct, current_time, current_incident_id)
-                    print(f"[GLARE] [OK] Rescued image saved: {file_path}")
-                except Exception as e:
-                    print(f"[GLARE] [ERR] Error saving glare image: {e}")
-                        
             except Exception as e:
-                print(f"[GLARE] Rescue error: {e}")
-                frame_for_processing = frame.copy()
+                print(f"[GLARE] Filter error ({current_mode}): {e}")
+
+            # Save separately — never affects frame_for_processing
+            try:
+                file_path = save_glare_image(frame_for_processing, dark_pct, current_time)
+                aegis_db.add_glare_image(file_path, dark_pct, current_time, current_incident_id)
+            except Exception as e:
+                print(f"[GLARE] Save error: {e}")
         
         # Create processed frame with blur fixing (applied AFTER glare rescue)
         if sensor_enabled['blur_fix']:

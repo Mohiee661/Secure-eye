@@ -3,9 +3,9 @@
   color-scheme: dark;
 
   /* Surfaces */
-  --bg:           #070B14;
-  --panel:        #0F1724;
-  --panel-alt:    #131D2E;
+  --bg:           #000000;
+  --panel:        #0A0A0A;
+  --panel-alt:    #111111;
 
   /* Borders */
   --border:       rgba(255, 255, 255, 0.06);
@@ -366,7 +366,7 @@ body::before {
 .video-aspect {
   position: relative;
   height: 278px;
-  background: #03060D;
+  background: #000000;
   overflow: hidden;
 }
 
@@ -873,7 +873,7 @@ body::before {
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  background: #030609;
+  background: #000000;
 }
 
 .crisis-video-img {
