@@ -3,7 +3,7 @@ import { createMockStatus } from '../lib/crisis-mock';
 import type { StatusPayload } from '../lib/crisis-types';
 
 const ENDPOINT = '/crisis/status';
-const POLL_MS = 500;
+const POLL_MS = 300;
 
 export function useCrisisStatus() {
   const [data, setData] = useState<StatusPayload>(() => createMockStatus());

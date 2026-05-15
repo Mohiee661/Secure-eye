@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -38,15 +38,23 @@ const SEVERITY_CLASS: Record<Severity, string> = {
 };
 
 function deploymentLabel(decision: string | null) {
-  if (decision === 'ALERT_AMBULANCE') return 'DEPLOYED AMBULANCE';
-  if (decision === 'ALERT_FIRE_ENGINE') return 'DEPLOYED FIRE ENGINE';
+  if (decision === 'ALERT_AMBULANCE')    return 'DEPLOYED AMBULANCE';
+  if (decision === 'ALERT_FIRE_ENGINE')  return 'DEPLOYED FIRE ENGINE';
+  if (decision === 'ONSITE_TEAM')        return 'ON-SITE TEAM DISPATCHED';
+  if (decision === 'GATE2_PENDING')      return 'AWAITING CONFIRMATION';
+  if (decision === 'GATE1_MONITORING')   return 'MONITORING — RECOVERY WINDOW';
   return 'DEPLOYMENT STANDBY';
 }
 
+function deploymentClass(decision: string | null) {
+  if (decision === 'ALERT_AMBULANCE' || decision === 'ALERT_FIRE_ENGINE' || decision === 'ONSITE_TEAM') return 'active';
+  if (decision === 'GATE2_PENDING')    return 'pending';
+  if (decision === 'GATE1_MONITORING') return 'monitoring';
+  return 'idle';
+}
+
 function DeploymentBadge({ decision }: { decision: string | null }) {
-  const label = deploymentLabel(decision);
-  const deployed = decision === 'ALERT_AMBULANCE' || decision === 'ALERT_FIRE_ENGINE';
-  return <div className={`crisis-pill deployment ${deployed ? 'active' : 'idle'}`}>{label}</div>;
+  return <div className={`crisis-pill deployment ${deploymentClass(decision)}`}>{deploymentLabel(decision)}</div>;
 }
 
 function StatusBadge({ status }: { status: SystemStatus }) {
@@ -88,15 +96,19 @@ function ActiveAlert({ alert }: { alert?: AlertItem }) {
   );
 }
 
-function VideoViewport({
-  src,
-  label,
-  location,
-}: {
-  src: string | null;
-  label: string;
-  location: string;
-}) {
+function VideoViewport({ label, location }: { label: string; location: string }) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [hasFrame, setHasFrame] = useState(false);
+
+  useEffect(() => {
+    const tick = () => {
+      if (imgRef.current) imgRef.current.src = `/crisis/frame?t=${Date.now()}`;
+    };
+    tick();
+    const id = setInterval(tick, 100);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="crisis-video-card">
       <div className="crisis-card-top">
@@ -111,9 +123,15 @@ function VideoViewport({
       </div>
 
       <div className="crisis-video-frame">
-        {src ? (
-          <img src={src} alt="Selected crisis video" className="crisis-video-img" />
-        ) : (
+        <img
+          ref={imgRef}
+          alt="Crisis feed"
+          className="crisis-video-img"
+          style={{ display: hasFrame ? 'block' : 'none' }}
+          onLoad={() => setHasFrame(true)}
+          onError={() => setHasFrame(false)}
+        />
+        {!hasFrame && (
           <div className="crisis-video-placeholder">
             <Camera size={28} />
             <div>
@@ -139,18 +157,20 @@ function VideoControls({
   return (
     <div className="crisis-video-controls">
       <div className="crisis-card-title">SELECT VIDEO</div>
-      <div className="crisis-control-grid">
-        {videos.map((video) => (
-          <button
-            key={video}
-            className={`crisis-video-btn ${activeVideo === video ? 'active' : ''}`}
-            onClick={() => onSelect(video)}
-            type="button"
-          >
-            {video}
-          </button>
-        ))}
-      </div>
+      {videos.length === 0 ? (
+        <p className="crisis-note" style={{ marginTop: 10 }}>No videos found — add .mp4 files to the /videos directory</p>
+      ) : (
+        <select
+          className="crisis-video-select"
+          value={activeVideo ?? ''}
+          onChange={(e) => { if (e.target.value) onSelect(e.target.value); }}
+        >
+          {!activeVideo && <option value="">— select a video to evaluate —</option>}
+          {videos.map((video) => (
+            <option key={video} value={video}>{video}</option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
@@ -168,14 +188,6 @@ function CleanHeader({ status, connected, decision }: { status: SystemStatus; co
         </div>
       </div>
       <div className="crisis-header-right">
-        <button
-          type="button"
-          onClick={() => { window.location.href = '/'; }}
-          className="crisis-action-btn ghost"
-          style={{ minHeight: 36 }}
-        >
-          Open Tamper
-        </button>
         <DeploymentBadge decision={decision} />
         <div className="crisis-connection">
           {connected ? <Wifi size={14} /> : <WifiOff size={14} />}
@@ -195,12 +207,6 @@ export default function CrisisResponse() {
     ref.current?.scrollTo({ top: 0 });
   }, [data.activeVideo]);
 
-  const src = data.frame
-    ? data.frame.startsWith('data:')
-      ? data.frame
-      : `data:image/jpeg;base64,${data.frame}`
-    : null;
-
   return (
     <div className="crisis-shell clean" ref={ref}>
       <CleanHeader status={data.status} connected={connected} decision={data.decision} />
@@ -208,7 +214,6 @@ export default function CrisisResponse() {
       <main className="crisis-clean-grid">
         <section className="crisis-main-column">
           <VideoViewport
-            src={src}
             label={data.activeVideo ?? data.currentVideo}
             location={data.location}
           />
@@ -227,9 +232,19 @@ export default function CrisisResponse() {
                 <div className="crisis-card-subtitle">live response state</div>
               </div>
             </div>
-            <div className={`crisis-deployment-readout ${data.decision === 'ALERT_AMBULANCE' || data.decision === 'ALERT_FIRE_ENGINE' ? 'active' : ''}`}>
+            <div className={`crisis-deployment-readout ${deploymentClass(data.decision)}`}>
               {deploymentLabel(data.decision)}
             </div>
+            {data.decision === 'GATE1_MONITORING' && (
+              <div className="crisis-note" style={{ marginTop: 8, color: 'var(--warn)' }}>
+                AI watching for 9s — suppresses if person recovers
+              </div>
+            )}
+            {data.decision === 'GATE2_PENDING' && (
+              <div className="crisis-note" style={{ marginTop: 8, color: 'var(--blue)' }}>
+                Email sent to authority — waiting for response
+              </div>
+            )}
           </div>
 
           <div className="crisis-alert-panel">
@@ -257,7 +272,8 @@ export default function CrisisResponse() {
               </button>
             </div>
             <div className="crisis-note">
-              Use the video selector to switch between fire and fall samples. The backend keeps one active alert card only.
+              Gate 1 pre-screens events — fire requires sustained detection, fall watches for 3s recovery.
+              Gate 2 emails the authority a 7-second clip for final confirmation.
             </div>
           </div>
         </aside>
